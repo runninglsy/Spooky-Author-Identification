@@ -1,0 +1,5 @@
+__pycache__/
+.idea/
+trained_results_*/
+checkpoints_*/
+
