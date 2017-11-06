@@ -4,6 +4,7 @@ import numpy as np
 import logging
 from collections import Counter
 import itertools
+import gensim
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -42,8 +43,8 @@ def pad_sentences(sentences, padding_word="$", forced_sequence_length=None):
     """Pad sentences during training or prediction"""
     if forced_sequence_length is None:  # Train
         sequence_length = (max(len(x) for x in sentences))
-        if sequence_length >= 50:
-            sequence_length = 50
+        if sequence_length >= 30:
+            sequence_length = 30
     else:  # Prediction
         logging.critical('This is prediction, reading the trained sequence length')
         sequence_length = forced_sequence_length
@@ -67,11 +68,11 @@ def pad_sentences(sentences, padding_word="$", forced_sequence_length=None):
     return padded_sentences
 
 
-def load_embeddings(vocabulary_lst):
-    word_embeddings = {}
-    for word in vocabulary_lst:
-        word_embeddings[word] = np.random.uniform(-0.25, 0.25, 300)
-    return word_embeddings
+# def load_embeddings(vocabulary_lst, embedding_dim):
+#     word_embeddings = {}
+#     for word in vocabulary_lst:
+#         word_embeddings[word] = np.random.uniform(-0.25, 0.25, embedding_dim)
+#     return word_embeddings
 
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):
@@ -92,38 +93,47 @@ def batch_iter(data, batch_size, num_epochs, shuffle=True):
             yield shuffled_data[start_index:end_index]
 
 
-def load_data(file_name):
-    # read dataset from .zip file
-    dataset = pd.read_csv(file_name, compression="zip")
+def load_data(train_file, test_file, embedding_dim):
+    # read train data from .zip file
+    train_data = pd.read_csv(train_file, compression="zip")
     selected = ["text", "author"]
-    non_selected = list(set(dataset.columns) - set(selected))
+    non_selected = list(set(train_data.columns) - set(selected))
 
     # drop unuseful column and incomplete line
-    dataset = dataset.drop(non_selected, axis=1)
-    dataset = dataset.dropna(axis=0, how='any')
-    dataset = dataset.reindex(np.random.permutation(dataset.index))
+    train_data = train_data.drop(non_selected, axis=1)
+    train_data = train_data.dropna(axis=0, how='any')
+    train_data = train_data.reindex(np.random.permutation(train_data.index))
 
     # map each label(string type) to an one-hot vector
-    labels = sorted(list(set(dataset[selected[1]].values)))
+    labels = sorted(list(set(train_data[selected[1]].values)))
     n_labels = len(labels)
     one_hot_mat = np.identity(n_labels, dtype=int)
     label_dict = dict(zip(labels, one_hot_mat))
 
     # convert each x(sentence) to an list of words
-    x_raw = dataset[selected[0]].apply(lambda x: clean_str(x).split(" ")).tolist()
+    x_raw = train_data[selected[0]].apply(lambda x: clean_str(x).split(" ")).tolist()
     # convert each y(label) to an one-hot vector
-    y_raw = dataset[selected[1]].apply(lambda x: label_dict[x]).tolist()
+    y_raw = train_data[selected[1]].apply(lambda x: label_dict[x]).tolist()
+
+    # add test data for word2vec training
+    test_data = pd.read_csv(test_file, compression="zip")
+    test_x_raw = test_data[selected[0]].apply(lambda x: clean_str(x).split(" ")).tolist()
 
     # padding to make all sentences have the same length.
     x_raw = pad_sentences(x_raw)
 
+    test_x_raw = pad_sentences(test_x_raw)
+
     # create vocabulary
-    vocabulary_lst, vocabulary_dict = build_vocab(x_raw)
+    vocabulary_lst, vocabulary_dict = build_vocab(x_raw + test_x_raw)
+
+    # word2vec
+    model = gensim.models.Word2Vec(x_raw + test_x_raw, min_count=0, workers=16, size=embedding_dim)
 
     # convert representation of x from list of words to list of numbers
     x_lst = np.array([[vocabulary_dict[word] for word in sentence] for sentence in x_raw])
 
     y_lst = np.array(y_raw)
 
-    return x_lst, y_lst, vocabulary_lst, vocabulary_dict, labels
+    return x_lst, y_lst, vocabulary_lst, vocabulary_dict, labels, model
 

@@ -11,7 +11,7 @@ import tensorflow as tf
 import csv
 from text_cnn_rnn import TextCNNRNN
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 logging.getLogger().setLevel(logging.INFO)
 
 
@@ -107,4 +107,4 @@ def predict_unseen_data(trained_timestamp=None, test_file=None):
 
 
 if __name__ == '__main__':
-    predict_unseen_data(trained_timestamp='1509709655', test_file='./data/test.zip')
+    predict_unseen_data(trained_timestamp='1509994718', test_file='./data/test.zip')

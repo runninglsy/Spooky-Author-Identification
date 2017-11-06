@@ -12,25 +12,27 @@ from text_cnn_rnn import TextCNNRNN
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3,4,6,7'
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # ''0,3,4,6,7'
 logging.getLogger().setLevel(logging.INFO)
 
 
-def train_cnn_rnn(input_file=None, training_config=None):
-    if input_file is None:
-        input_file = sys.argv[1]
+def train_cnn_rnn(train_file=None, test_file=None, training_config=None):
+    if train_file is None:
+        train_file = sys.argv[1]
+    if test_file is None:
+        test_file = sys.argv[2]
     if training_config is None:
-        training_config = sys.argv[2]
+        training_config = sys.argv[3]
 
-    x_lst, y_lst, vocabulary_lst, vocabulary_dict, labels = data_helper.load_data(input_file)
     params = json.loads(open(training_config).read())
 
-    word_embeddings = data_helper.load_embeddings(vocabulary_lst)
+    x_lst, y_lst, vocabulary_lst, vocabulary_dict, labels, word_embeddings = data_helper.load_data(
+        train_file, test_file, params['embedding_dim'])
     embedding_mat = [word_embeddings[word] for _, word in enumerate(vocabulary_lst)]
     embedding_mat = np.array(embedding_mat, dtype=np.float32)
 
-    x_, x_test, y_, y_test = train_test_split(x_lst, y_lst, test_size=0.3)
-    x_train, x_dev, y_train, y_dev = train_test_split(x_, y_, test_size=0.3)
+    x_, x_test, y_, y_test = train_test_split(x_lst, y_lst, test_size=0.2)
+    x_train, x_dev, y_train, y_dev = train_test_split(x_, y_, test_size=0.2)
 
     logging.info('number of samples: x_train: {}, x_dev: {}, x_test: {}'.format(len(x_train), len(x_dev), len(x_test)))
     logging.info('number of samples: y_train: {}, y_dev: {}, y_test: {}'.format(len(y_train), len(y_dev), len(y_test)))
@@ -169,5 +171,5 @@ def train_cnn_rnn(input_file=None, training_config=None):
 
 
 if __name__ == '__main__':
-    train_cnn_rnn("./data/train.zip", "./training_config.json")
+    train_cnn_rnn("./data/train.zip", "./data/test.zip", "./training_config.json")
 
