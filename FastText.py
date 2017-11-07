@@ -95,6 +95,7 @@ def create_model(embedding_dims=20, optimizer='adam'):
     model = Sequential()
     model.add(Embedding(input_dim=input_dim, output_dim=embedding_dims))
     # now shape: `(batch_size, sequence_length, output_dim)`
+    model.add(keras.layers.Conv1D(filters=embedding_dims, kernel_size=3))
     model.add(GlobalAveragePooling1D())
     model.add(Dense(3, activation='softmax'))
 
@@ -109,13 +110,13 @@ x_train, x_test, y_train, y_test = train_test_split(docs, y, test_size=0.20)
 
 timestamp = str(int(time.time()))
 model = create_model()
+model.load_weights('FastText_model_1510064783')
 hist = model.fit(x_train, y_train,
                  batch_size=16,
                  validation_data=(x_test, y_test),
                  epochs=epochs,
                  callbacks=[EarlyStopping(patience=2, monitor='val_loss')])
 model.save('FastText_model_{}'.format(timestamp))
-# model.load_weights('')
 
 test_df = pd.read_csv('./data/test.zip', compression='zip')
 docs = create_docs(test_df)
@@ -129,7 +130,7 @@ for author in author_lst:
 
 test_df = test_df[['id'] + author_lst]
 
-test_df.to_csv('predictions_FastText_{0}_1.csv'.format(timestamp), index=False,
+test_df.to_csv('predictions_FastText_{0}.csv'.format(timestamp), index=False,
                quoting=csv.QUOTE_NONNUMERIC)
 
 
